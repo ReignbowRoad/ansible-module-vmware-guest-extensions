@@ -1,0 +1,19 @@
+---
+
+- name: VMWare Extensions
+  hosts: localhost
+
+  vars:
+    vm_name: 
+    macAddress: 
+
+  tasks:
+    - name: Delete Network Interface
+      vmware_guest_nic:
+        hostname: "{{ vc_hostname }}" 
+        username: "{{ vc_username }}"
+        password: "{{ vc_password }}"
+        validate_certs: False
+        name: "{{ vm_name }}"
+        state: absent
+        macAddress: "{{ macAddress }}"

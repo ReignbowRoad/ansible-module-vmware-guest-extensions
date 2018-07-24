@@ -1,0 +1,23 @@
+---
+
+- name: VMWare Extensions
+  hosts: localhost
+
+  vars:
+    vm_name: 
+
+  tasks:
+    - name: Add Network Interface
+      vmware_guest_nic:
+        hostname: "{{ vc_hostname }}" 
+        username: "{{ vc_username }}"
+        password: "{{ vc_password }}"
+        validate_certs: False
+        name: "{{ vm_name }}"
+        network: "VM Network"
+        state: present
+      register: vm_nic_facts
+
+    - name: New MAC Address Details
+      debug: var=vm_nic_facts
+
