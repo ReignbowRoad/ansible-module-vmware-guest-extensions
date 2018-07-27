@@ -26,7 +26,8 @@ def main():
 
     vmware_required_if = [
       [ 'state' , 'present' , [ 'network' ] ] ,
-      [ 'state' , 'absent' , [ 'macAddress' ] ]
+      [ 'state' , 'absent' , [ 'macAddress' ] ],
+      [ 'state' , 'configured' , [ 'macAddress' , 'ipv4' , 'netmask' , 'gateway' ] ]
     ]
 
     module = AnsibleModule(
@@ -42,6 +43,8 @@ def main():
         try:
             if module.params['state'] == 'absent':
               vmware.DeleteNetworkAdapter( vm , module.params['macAddress'] )
+            elif module.params['state'] == 'configured':
+              vmware.ConfigureNetworkAdapter( vm , module.params['macAddress'] )
             else:
               vmware.CreateNetworkAdapter( vm )
         except Exception as exc:
