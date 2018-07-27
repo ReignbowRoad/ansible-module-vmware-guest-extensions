@@ -8,7 +8,7 @@
 
   tasks:
     - name: Add Network Interface
-      vmware_guest_nic:
+      vmware_guest_network_adapter:
         hostname: "{{ vc_hostname }}" 
         username: "{{ vc_username }}"
         password: "{{ vc_password }}"

@@ -8,15 +8,12 @@
     macAddress: 
 
   tasks:
-    - name: Get NIC Facts
-      vmware_guest_nic_facts:
-        hostname: "{{ vc_hostname }}"
+    - name: Delete Network Interface
+      vmware_guest_network_adapter:
+        hostname: "{{ vc_hostname }}" 
         username: "{{ vc_username }}"
         password: "{{ vc_password }}"
         validate_certs: False
         name: "{{ vm_name }}"
+        state: absent
         macAddress: "{{ macAddress }}"
-      register: vm_nic_facts
-
-    - name: Show NIC Facts
-      debug: var=vm_nic_facts
