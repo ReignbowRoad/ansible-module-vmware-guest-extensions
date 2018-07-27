@@ -269,3 +269,42 @@ class AnsibleVMWareGuestNic( object ):
 
     self.result['changed'] = True
     self.module.exit_json( json=facts )
+
+
+  def ConfigureNetworkAdapter( vm , macAddress ):
+  
+    adapter_maps = list()
+    
+    if vm.runtime.powerState == vim.VirtualMachinePowerState.poweredOn:
+      self.module.fail_json( msg='Virtual Machine is powered on. Turn it off before configuring.' )
+  
+    for device in vm.config.hardware.device:
+      if isinstance(device, vim.vm.device.VirtualEthernetCard):
+        adaptermap = vim.vm.customization.AdapterMapping()
+        adaptermap.adapter = vim.vm.customization.IPSettings()
+        adaptermap.adapter.ip = vim.vm.customization.FixedIp()
+        adaptermap.adapter.ip.ipAddress = self.module.params['ipv4']
+        adaptermap.adapter.subnetMask = self.module.params['netmask']
+        adaptermap.adapter.gateway = self.module.params['gateway']
+        adaptermap.macAddress = macAddress
+  
+        adapter_maps.append(adaptermap)
+  
+    globalip = vim.vm.customization.GlobalIPSettings()
+  
+    identity = vim.vm.customization.LinuxPrep()
+    identity.hostName = vim.vm.customization.FixedName()
+    identity.hostName.name = self.module.params['name']
+  
+    ipSpec = vim.vm.customization.Specification()
+    ipSpec.identity = identity
+    ipSpec.nicSettingMap = adapter_maps
+    ipSpec.globalIPSettings = globalip
+  
+    task = vm.Customize(spec=ipSpec)
+    self.WaitForTasks(si, [task])
+    
+    facts = self.NetworkAdapterFacts( vm , macAddress )  
+
+    self.result['changed'] = True
+    self.module.exit_json( json=facts )
