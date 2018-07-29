@@ -4,8 +4,8 @@
   hosts: localhost
 
   vars:
-    vm_name: 
-    macAddress: 
+    vm_name: 4220f4a456b6
+    macAddress: "00:50:56:99:31:31"
 
   tasks:
     - name: Get NIC Facts
