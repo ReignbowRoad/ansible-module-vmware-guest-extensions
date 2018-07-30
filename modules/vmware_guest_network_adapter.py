@@ -26,7 +26,8 @@ def main():
 
     vmware_required_if = [
       [ 'state' , 'present' , [ 'network' ] ] ,
-      [ 'state' , 'absent' , [ 'macAddress' ] ]
+      [ 'state' , 'absent' , [ 'macAddress' ] ],
+      [ 'state' , 'configured' , [ 'macAddress' , 'ipv4' , 'netmask' , 'gateway' ] ]
     ]
 
     module = AnsibleModule(
@@ -36,14 +37,16 @@ def main():
 
     vmware = AnsibleVMWareGuestNic(module)
 
-    vm = vmware.find_obj( [vim.VirtualMachine] , module.params['name'] )
+    vm = vmware.FindVMWareObject( [vim.VirtualMachine] , module.params['name'] )
 
     if vm:
         try:
             if module.params['state'] == 'absent':
-              vmware.deleteVirtualNic( vm , module.params['macAddress'] )
+              vmware.DeleteNetworkAdapter( vm , module.params['macAddress'] )
+            elif module.params['state'] == 'configured':
+              vmware.ConfigureNetworkAdapter( vm , module.params['macAddress'] )
             else:
-              vmware.createVirtualNic( vm )
+              vmware.CreateNetworkAdapter( vm )
         except Exception as exc:
             module.fail_json(msg="Operation failed with exception %s" % to_text(exc))
     else:

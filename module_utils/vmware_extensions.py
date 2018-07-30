@@ -25,7 +25,7 @@ class AnsibleVMWareGuestNic( object ):
     self.content = self.service_instance.content
 
 
-  def find_obj( self , vimtype, name, first=True):
+  def FindVMWareObject( self , vimtype, name, first=True):
     container = self.content.viewManager.CreateContainerView(container=self.content.rootFolder, recursive=True, type=vimtype)
     obj_list = container.view
     container.Destroy()
@@ -49,7 +49,7 @@ class AnsibleVMWareGuestNic( object ):
     return [obj for obj in obj_list if obj.name == name]
 
 
-  def wait_for_tasks( self , service_instance, tasks ):
+  def WaitForTasks( self , service_instance, tasks ):
       
     property_collector = service_instance.content.propertyCollector
     task_list = [str(task) for task in tasks]
@@ -96,7 +96,7 @@ class AnsibleVMWareGuestNic( object ):
         pcfilter.Destroy()
 
 
-  def getVirtualMachineNicCount( self , vm ):
+  def NetworkAdapterCount( self , vm ):
     
     count = 0
 
@@ -107,7 +107,7 @@ class AnsibleVMWareGuestNic( object ):
     return count
 
 
-  def getMacAddressList( self , vm ):
+  def HardwareAddresses( self , vm ):
 
     addresses = []
 
@@ -118,7 +118,7 @@ class AnsibleVMWareGuestNic( object ):
     return addresses
 
 
-  def getDifference( self , list1 , list2 ):
+  def GetListDelta( self , list1 , list2 ):
 
     diff = None
 
@@ -129,7 +129,7 @@ class AnsibleVMWareGuestNic( object ):
     return diff
 
 
-  def getVirtualMachineNicFacts( self , vm , hwAddress ):
+  def NetworkAdapterFacts( self , vm , hwAddress ):
 
     facts = {
       'hostName'            :     None,
@@ -175,14 +175,14 @@ class AnsibleVMWareGuestNic( object ):
       return facts
 
 
-  def gatherNicFacts( self , vm , hwAddress ):
-    facts = self.getVirtualMachineNicFacts( vm , hwAddress )
+  def GatherNetworkAdapterFacts( self , vm , hwAddress ):
+    facts = self.NetworkAdapterFacts( vm , hwAddress )
     self.module.exit_json( json=facts )
 
 
-  def deleteVirtualNic( self , vm , hwAddress ):
+  def DeleteNetworkAdapter( self , vm , hwAddress ):
 
-    nic_facts = self.getVirtualMachineNicFacts( vm , hwAddress )
+    nic_facts = self.NetworkAdapterFacts( vm , hwAddress )
 
     if nic_facts['macAddress'] is None:
       self.result['changed'] = False
@@ -190,7 +190,7 @@ class AnsibleVMWareGuestNic( object ):
     else:
       nic_label = nic_facts['deviceInfo']['label']    
 
-    nic_count = self.getVirtualMachineNicCount( vm )
+    nic_count = self.NetworkAdapterCount( vm )
 
     if nic_count == 1:
       self.result['changed'] = False
@@ -214,12 +214,12 @@ class AnsibleVMWareGuestNic( object ):
     spec.deviceChange = [virtual_nic_spec]
 
     task = vm.ReconfigVM_Task(spec=spec)
-    self.wait_for_tasks(self.service_instance, [task])
+    self.WaitForTasks(self.service_instance, [task])
 
     self.result['changed'] = True
 
 
-  def createVirtualNic( self , vm ):
+  def CreateNetworkAdapter( self , vm ):
 
     configSpec = vim.vm.ConfigSpec()
     nicSpecProperties = []
@@ -232,7 +232,7 @@ class AnsibleVMWareGuestNic( object ):
     nicSpec.device.deviceInfo.summary = self.module.params['network']
 
     # Make sure the network exists
-    network = self.find_obj( [vim.Network], self.module.params['network'] )
+    network = self.FindVMWareObject( [vim.Network], self.module.params['network'] )
 
     if not network:
       self.result['changed'] = False
@@ -256,16 +256,55 @@ class AnsibleVMWareGuestNic( object ):
     configSpec.deviceChange = nicSpecProperties
 
     # Add the NIC and wait for the task to complete in vCenter
-    macPreSnapshot = self.getMacAddressList( vm )
+    macPreSnapshot = self.HardwareAddresses( vm )
     task = vm.ReconfigVM_Task(spec=configSpec)
-    self.wait_for_tasks(self.service_instance, [task])
+    self.WaitForTasks(self.service_instance, [task])
 
     # Get new MAC Address
-    macPostSnapshot = self.getMacAddressList( vm )
-    newMacAddress = self.getDifference( macPostSnapshot , macPreSnapshot )
+    macPostSnapshot = self.HardwareAddresses( vm )
+    newMacAddress = self.GetListDelta( macPostSnapshot , macPreSnapshot )
 
     # Get facts for new NIC
-    facts = self.getVirtualMachineNicFacts( vm , newMacAddress )
+    facts = self.NetworkAdapterFacts( vm , newMacAddress )
+
+    self.result['changed'] = True
+    self.module.exit_json( json=facts )
+
+
+  def ConfigureNetworkAdapter( vm , macAddress ):
+  
+    adapter_maps = list()
+    
+    if vm.runtime.powerState == vim.VirtualMachinePowerState.poweredOn:
+      self.module.fail_json( msg='Virtual Machine is powered on. Turn it off before configuring.' )
+  
+    for device in vm.config.hardware.device:
+      if isinstance(device, vim.vm.device.VirtualEthernetCard):
+        adaptermap = vim.vm.customization.AdapterMapping()
+        adaptermap.adapter = vim.vm.customization.IPSettings()
+        adaptermap.adapter.ip = vim.vm.customization.FixedIp()
+        adaptermap.adapter.ip.ipAddress = self.module.params['ipv4']
+        adaptermap.adapter.subnetMask = self.module.params['netmask']
+        adaptermap.adapter.gateway = self.module.params['gateway']
+        adaptermap.macAddress = macAddress
+  
+        adapter_maps.append(adaptermap)
+  
+    globalip = vim.vm.customization.GlobalIPSettings()
+  
+    identity = vim.vm.customization.LinuxPrep()
+    identity.hostName = vim.vm.customization.FixedName()
+    identity.hostName.name = self.module.params['name']
+  
+    ipSpec = vim.vm.customization.Specification()
+    ipSpec.identity = identity
+    ipSpec.nicSettingMap = adapter_maps
+    ipSpec.globalIPSettings = globalip
+  
+    task = vm.Customize(spec=ipSpec)
+    self.WaitForTasks(si, [task])
+    
+    facts = self.NetworkAdapterFacts( vm , macAddress )  
 
     self.result['changed'] = True
     self.module.exit_json( json=facts )

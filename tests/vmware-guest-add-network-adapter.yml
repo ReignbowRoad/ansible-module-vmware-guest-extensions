@@ -4,19 +4,20 @@
   hosts: localhost
 
   vars:
-    vm_name: 
-    macAddress: 
+    vm_name: 4220f4a456b6
 
   tasks:
-    - name: Get NIC Facts
-      vmware_guest_nic_facts:
-        hostname: "{{ vc_hostname }}"
+    - name: Add Network Interface
+      vmware_guest_network_adapter:
+        hostname: "{{ vc_hostname }}" 
         username: "{{ vc_username }}"
         password: "{{ vc_password }}"
         validate_certs: False
         name: "{{ vm_name }}"
-        macAddress: "{{ macAddress }}"
+        network: "VM Network"
+        state: present
       register: vm_nic_facts
 
-    - name: Show NIC Facts
+    - name: New MAC Address Details
       debug: var=vm_nic_facts
+

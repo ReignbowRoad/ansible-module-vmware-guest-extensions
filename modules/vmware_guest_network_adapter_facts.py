@@ -25,13 +25,12 @@ def main():
     module = AnsibleModule(argument_spec=argument_spec)
 
     vmware = AnsibleVMWareGuestNic(module)
-    # Check if the VM exists before continuing
-    vm = vmware.find_obj( [vim.VirtualMachine] , module.params['name'] )
 
-    # VM already exists
+    vm = vmware.FindVMWareObject( [vim.VirtualMachine] , module.params['name'] )
+
     if vm:
         try:
-            facts = vmware.gatherNicFacts( vm , module.params['macAddress'] )
+            facts = vmware.GatherNetworkAdapterFacts( vm , module.params['macAddress'] )
             module.exit_json( facts )
         except Exception as exc:
             module.fail_json(msg="Fact gather failed with exception %s" % to_text(exc))
