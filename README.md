@@ -81,7 +81,7 @@ The following example will return facts about the specified Network Interface an
 
 This module will add, remove or configure the specified Network Adapter:
 
-Parameters
+#### Parameters
 
 | Parameter      | Choices / Defaults                            | Comments                                                     |
 | -------------- | --------------------------------------------- | ------------------------------------------------------------ |
@@ -96,3 +96,58 @@ Parameters
 | ipv4           |                                               | The ipv4 address to assign to Virtual Machine                |
 | netmask        |                                               | The subnet mask for the address                              |
 | gateway        |                                               | The default gateway for the interface                        |
+
+#### Example
+
+The following are examples on how to add, remove and configure a Network Adapter
+
+```yaml
+# Add Network Interface 
+- name: Add Network Interface
+  vmware_guest_network_adapter:
+    hostname: "vcenter.example.com" 
+    username: "root"
+    password: "p4ssw0rd"
+    validate_certs: False
+    name: "vm1"
+    network: "VM Network"
+    state: present
+  register: vm_nic_facts
+
+# Removed Network Interface
+- name: Delete Network Interface
+  vmware_guest_network_adapter:
+    hostname: "vcenter.example.com" 
+    username: "root"
+    password: "p4ssw0rd"
+    validate_certs: False
+    name: "vm1"
+    state: absent
+    macAddress: "72:a8:c0:b4:c6:0b"
+
+# Configured Network Interface
+- name: "Powering off Virtual Machine"
+  vmware_guest:
+    hostname: "vcenter.example.com"
+    username: "root"
+    password: "p4ssw0rd"
+    validate_certs: no
+    name: "vm1"
+    state: poweredoff
+  register: vm_power_state
+
+- name: Configure Network Interface
+  vmware_guest_network_adapter:
+    hostname: "vcenter.example.com" 
+    username: "root"
+    password: "p4ssw0rd"
+    validate_certs: False
+    name: "vm1"
+    macAddress: "72:a8:c0:b4:c6:0b"
+    ipv4: "192.168.1.24"
+    gateway: "192.168.1.1"
+    netmask: "255.255.0.0"
+    state: configured
+  register: vm_nic_facts
+```
+
