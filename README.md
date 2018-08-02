@@ -151,3 +151,7 @@ The following are examples on how to add, remove and configure a Network Adapter
   register: vm_nic_facts
 ```
 
+## To Do
+
+1. Make the `configured` state method idempotent.
+2. Allow additional configuration values such as DNS
